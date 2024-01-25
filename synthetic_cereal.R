@@ -21,7 +21,7 @@ errors = t(mvrnorm(length(which(cluster_labels==1)),rep(0,101),diag(A$uniqueness
 scores = mvrnorm(length(which(cluster_labels==1)),rep(0,Q),diag(rep(1,Q)))
 M = A$loadings%*% t(scores)
 A_background = t(means + M + errors)
-Data[length(which(cluster_labels==1)),2:102] = A_background
+Data[which(cluster_labels==1),2:102] = A_background
 
 #Generating wheat data from factanal of known wheat pixels (based on threshold)
 A = factanal(original_cereal_data[which(cluster_labels==2),2:102],Q,scores = 'regression')
@@ -32,7 +32,7 @@ errors = t(mvrnorm(length(which(cluster_labels==2)),rep(0,101),diag(A$uniqueness
 scores = mvrnorm((length(which(cluster_labels==2))),rep(0,Q),diag(rep(1,Q)))
 M = A$loadings%*% t(scores)
 A_wheat = t(means + M + errors)
-Data[length(which(cluster_labels==2)),2:102] = A_wheat
+Data[which(cluster_labels==2),2:102] = A_wheat
 
 #Generating corn data from factanal of known corn pixels (based on threshold)
 A = factanal(original_cereal_data[which(cluster_labels==3),2:102],Q,scores = 'regression')
@@ -43,10 +43,10 @@ errors = t(mvrnorm(length(which(cluster_labels==3)),rep(0,101),diag(A$uniqueness
 scores = mvrnorm(length(which(cluster_labels==3)),rep(0,Q),diag(rep(1,Q)))
 M = A$loadings%*% t(scores)
 A_corn = t(means + M + errors)
-Data[length(which(cluster_labels==3)),2:102] = A_corn
+Data[which(cluster_labels==3),2:102] = A_corn
 
 #Generating rice data from factanal of known rice pixels (based on threshold)
-A = factanal(original_cereal_data[which(cluster_labels==4),2:102],Q,scores = 'regression')
+A = factanal(original_cereal_data[which(cluster_labels==4),2:102],Q,scores = 'regression',lower = '0.0053')
 means = apply(original_cereal_data[which(cluster_labels==4),2:102],2,mean)
 new_means = rep(means,length(which(cluster_labels==4)))
 new_means = matrix(new_means,101,length(which(cluster_labels==4)))
@@ -54,11 +54,11 @@ errors = t(mvrnorm(length(which(cluster_labels==4)),rep(0,101),diag(A$uniqueness
 scores = mvrnorm(length(which(cluster_labels==4)),rep(0,Q),diag(rep(1,Q)))
 M = A$loadings%*% t(scores)
 A_rice = t(means + M + errors)
-Data[length(which(cluster_labels==4)),2:102] = A_rice
+Data[which(cluster_labels==4),2:102] = A_rice
 
 original_cereal_data$X<-NULL
 Data$X<-NULL
-
+write.csv(Data,file = 'test_synthetic.csv')
 # Loading the larger selected constrained pixels based on the location in the HI image.
 background_constraints_selected = read.csv('Full_data_background_constraints_random_larger.csv')
 wheat_constraints_selected = read.csv('Full_data_wheat_constraints_random_larger.csv')
