@@ -1,18 +1,29 @@
+#Loading the scripts to implement PGMM(UUU), constrained PGMM and consensus clustering.
 source('PGMM.R')
 source('constrained_PGMM.R')
 source('consensus_Clustering.R')
 
-#Dataset with mildly overlapping cluster
+#Loading the threshold labels for three of the nine hyperspectral images (one for each cereal type)
 cluster_labels = read.csv('Threshold_Labels_Subset_Data.csv')
 cluster_labels = cluster_labels$X0
 
-set.seed(100)
+#Generating dataset with heavily overlapping clusters
+sim_data = 1
+seed_list = c(100,200,300,400,500)
+set.seed(seed_list[sim_data])
+#Number of factors
 Q = 3
+#Number of observations
 N = length(cluster_labels)
+#Number of variables
 P = 101
+#Number of clusters
 G = 4
+#Mean Matrix
 mu = array(dim = c(G,P))
+#Loadings Matrix
 lambda = array(dim = c(P,Q,G))
+#Uniqueness
 psi = array(0,c(P,P,G))
 temp_simulated_data = matrix(nrow = N,ncol = P)
 correlation_span = 5
@@ -47,7 +58,7 @@ for(g in 1:G){
   }
 }
 
-#Mixture of Factor Analyzer data generation
+#Generating the heavily overlapping data from four heavily overlapping Factor Analyzers(One for each cereal type and background)
 for(g in 1:G){
   scores = mvrnorm(length(which(cluster_labels==g)),rep(0,Q),diag(Q))
   errors = t(mvrnorm(length(which(cluster_labels==g)),rep(0,P),psi[,,g]))
@@ -65,23 +76,6 @@ wheat_simulated_constraints_selected = wheat_simulated_constraints_selected$X0
 corn_simulated_constraints_selected = corn_simulated_constraints_selected$X0
 rice_simulated_constraints_selected = rice_simulated_constraints_selected$X0
 B_selected_constraints = list(background_simulated_constraints_selected,wheat_simulated_constraints_selected,corn_simulated_constraints_selected,rice_simulated_constraints_selected)
-
-# Fitting PGMM and constrained-PGMM on different settings of r & d
-constrained_pgmmAECM_implementer<-function(x,G=4,Q=2,epoch = 10000, zstart = 1,zlist = c(), seed = 123456, B = NULL){
-  start_time = Sys.time()
-  new <- try(constrained_pgmmAECM(data.frame(x),G=G,Q=Q,epoch = epoch, zstart = zstart, zlist = zlist,seed = seed, B=B),silent = T)
-  if(is.list(new)==TRUE){
-    prod_probability = new$probability_score*log(new$probability_score)
-    prod_probability[is.na(prod_probability)] = 0
-    weight <- -1*sum(colSums(prod_probability))
-    weighted_B <- (1/weight)
-    end_time = as.numeric(Sys.time() - start_time,units='mins')
-    return(list(new$probability_score,new$converged,new$predicted_cluster,weighted_B,end_time,new$log_likelihood_list,new$initial_cluster)) 
-  }
-  else{
-    return(new)
-  }
-}
 
 # Parallel run
 library(parallel)  
@@ -102,18 +96,18 @@ clusterEvalQ(cl, {
   library(MixSim)
 })
 
-sim_data = 1
+# Fitting PGMM and constrained-PGMM on different settings of M & d
 G = 4
 Q = 1
 e = 15000
-# Generating randomly selected subsets r of features. Features per subset d
-seed = 100
+# Generating randomly selected M subsets of features. Features per subset d
+seed = seed_list[sim_data]
 for(d in c(10,20)){
   set.seed(seed)
   Y = list()
-  for(r in c(10,25,50,100)){
+  for(M in c(10,25,50,100)){
     X = list()
-    for (i in 1:r){#Change the Data object to just columns
+    for (i in 1:M){#Change the Data object to just columns
       cols = sample(1:ncol(temp_simulated_data),d,replace = F)
       x = list(cols)
       X = append(X,list(x))
@@ -121,33 +115,33 @@ for(d in c(10,20)){
     Y = append(Y,list(X))
   }
   print(paste('simulation',as.character(sim_data),'begins'))
-  r_index = 1
-  for(r in c(10,25,50,100)){
+  M_index = 1
+  for(M in c(10,25,50,100)){
     for (constrained in c(0,1)){
       start_time = Sys.time()
-      print(c(r,d,constrained))
+      print(c(M,d,constrained))
       if(constrained == 0){
         #pgmmAECM is constrained_pgmmAECM with no constraints
-        result <- foreach(m = Y[[r_index]]) %dopar% constrained_pgmmAECM_implementer(temp_simulated_data[,m[[1]]],G=G,Q=Q,epoch = e, zstart = 1, B = NULL)
+        result <- foreach(m = Y[[M_index]]) %dopar% constrained_pgmmAECM_implementer(temp_simulated_data[,m[[1]]],G=G,Q=Q,epoch = e, zstart = 1, B = NULL)
       }
       else{
         #constrained_pgmmAECM with constraints
-        result <- foreach(m = Y[[r_index]]) %dopar% constrained_pgmmAECM_implementer(temp_simulated_data[,m[[1]]],G=G,Q=Q,epoch = e, zstart = 1, B = B_selected_constraints)
+        result <- foreach(m = Y[[M_index]]) %dopar% constrained_pgmmAECM_implementer(temp_simulated_data[,m[[1]]],G=G,Q=Q,epoch = e, zstart = 1, B = B_selected_constraints)
       }
       print('Models computed')
       end_time = as.numeric(Sys.time() - start_time,units = "mins")
       print(end_time)
-      parallel_list = list(no_models = r,constraint = constrained,parallel_time = end_time)
+      parallel_list = list(no_models = M,constraint = constrained,parallel_time = end_time)
       n_result = 1
       for(s in result){
-        location = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),'_r',as.character(r),'_d',as.character(d),'_cons',as.character(constrained),'_',as.character(n_result),'.RData',sep = '')
+        location = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_',as.character(n_result),'.RData',sep = '')
         save(s,file = location)
         n_result=n_result+1
       }
-      location = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),'_r',as.character(r),'_d',as.character(d),'_cons',as.character(constrained),'_creation_time.RData',sep = '')
+      location = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_creation_time.RData',sep = '')
       save(parallel_list,file=location)
     }
-    r_index = r_index + 1
+    M_index = M_index + 1
   }    
 }
 
@@ -155,12 +149,12 @@ for(d in c(10,20)){
 stopCluster(cl)
 # Consenus clustering with equal (e = 0) and entropy based weights (e = 1) and saving the consensus cluster solution for c-PGMM (c = 0) and cc-PGMM (c = 1)
 for(d in c(10,20)){
-  for(r in c(10,25,50,100)){
+  for(M in c(10,25,50,100)){
     for(c in c(0,1)){
       for(e in c(0,1)){
         print(c(c,e))
         loc = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),sep ='')
-        sim_mat_hclust(loc,d,r,c,e,G,N)        
+        sim_mat_hclust(loc,d,M,c,e,G,N)        
       }
     }    
   }
@@ -169,13 +163,13 @@ for(d in c(10,20)){
 # Computing ARI
 final_results = data.frame()
 for(d in c(10,20)){
-  for(r in c(10,25,50,100)){
+  for(M in c(10,25,50,100)){
     loc = paste('heavilyoverlappingcluster_Data_',as.character(sim_data),sep ='')
     for(c in c(0,1)){
       for(e in c(0,1)){
-        saved_loc = paste(loc,'_r',as.character(r),'_d',as.character(d),'_cons',as.character(c),'_entropy',as.character(e),'_consensus_cluster.RData',sep = '')
+        saved_loc = paste(loc,'_M',as.character(M),'_d',as.character(d),'_cons',as.character(c),'_entropy',as.character(e),'_consensus_cluster.RData',sep = '')
         load(saved_loc)
-        final_results = rbind(final_results,cbind(sim_data,c,e,d,r,adjustedRandIndex(result[[1]],cluster_labels),result[[8]],result[[9]]))
+        final_results = rbind(final_results,cbind(sim_data,c,e,d,M,adjustedRandIndex(result[[1]],cluster_labels),result[[8]],result[[9]]))
       }
     }    
   }

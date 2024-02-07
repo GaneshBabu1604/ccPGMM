@@ -13,7 +13,7 @@ library(IMIFA)
 #Creating a Parsimonious Gaussian Mixture Model(UUU) Alternating Expectation - Conditional Maximization Algorithm:
 constrained_pgmmAECM <- function(x,G = 1,Q = 2,epoch=100, convergence_value = 1e-6,zstart=1,zlist=c(),B=NULL,seed=123456){
   #Input:
-  #x : Dataframe(N,P). Where n is the number of observations for creating the clusters and p is the features of each observation.
+  #x : Dataframe(N,P). Where N is the number of observations for creating the clusters and P is the features of each observation.
   #epoch : int. Number of iterations.
   #G: int. Number of clusters.
   #Q: int. Number of factors.
@@ -176,7 +176,14 @@ cov_weighted = function(x,G=1,mu,z_hat){
   return(s)
 }
 
+#Incorporating the constraints in to posterior probability computation
 constrained_z_implementer<-function(z,B,G,N){
+  #Input:
+  #z: matrix of probability score based on estimated parameters (N x G)
+  #B: list of arrays. Positive and negative constraints. Observations within a array are positively constrained.
+  #   Observations in different array are negatively constrained.
+  #G: int. Number of clusters.
+  #N: int. Number of observations(pixels).
   if(is.null(B)!=TRUE){
     B_g_log_exp_sum=list()
     B_g_exp_sum = list()
@@ -234,8 +241,51 @@ constrained_z<-function(z,B,B_g_log_sum,B_g_exp_sum,b_list,b_list_val,g_list,ite
   }
 }
 
+#Implementing constrained PGMM
+constrained_pgmmAECM_implementer<-function(x,G=4,Q=2,epoch = 10000, zstart = 1,zlist = c(), seed = 123456, B = NULL){
+  #Input:
+  #x : Dataframe(N,P). Where N is the number of observations for creating the clusters and P is the features of each observation.
+  #epoch : int. Number of iterations.
+  #G: int. Number of clusters.
+  #Q: int. Number of factors.
+  #zstart: int. kmeans starting values (1) or user defined starting values(2)
+  #zlist: vector. User defined starting values. Applicable only when zstart = 2
+  #B: list of lists. Positive and negative constraints. Observations within a list are positively constrained.
+  #   Observations in different list are negatively constrained.
+  #seed: int. seed for kmeans clustering. Applicable only when zstart = 1
+  
+  #Output:
+  #Returns a list of posterior probability(probability_score), predicted cluster (maximum a posteriori values), Entropy weights, time taken to fit, log likelihood and the initial_cluster.
+  start_time = Sys.time()
+  new <- try(constrained_pgmmAECM(data.frame(x),G=G,Q=Q,epoch = epoch, zstart = zstart, zlist = zlist,seed = seed, B=B),silent = T)
+  if(is.list(new)==TRUE){
+    prod_probability = new$probability_score*log(new$probability_score)
+    prod_probability[is.na(prod_probability)] = 0
+    weight <- -1*sum(colSums(prod_probability))
+    weighted_B <- (1/weight)
+    end_time = as.numeric(Sys.time() - start_time,units='mins')
+    return(list(new$probability_score,new$converged,new$predicted_cluster,weighted_B,end_time,new$log_likelihood_list,new$initial_cluster)) 
+  }
+  else{
+    return(new)
+  }
+}
+
 #Creating constraints list
 constrained_pixels <- function(n_cluster = 3, n_images = 4, images_size = list(),constrained_image = c(),constrained_image_x_y = list()){
+  #Input:
+  #n_cluster : int. Number of clusters G
+  #n_images : int. Number of images.
+  #image_size: list. Size of images(n_x,n_y). n_x - number of pixels along x axis, n_y - number of pixels along y axis. 
+			   #Example : list(c(143,230),c(152,215),c(136,229),c(138,181))
+  #constrained_image: array. Images where constraint information available. 1 if constraint information present, else 0. 
+					  #Example : if n_images = 4, constrained_image = c(1,1,0,1) means images 1, 2, and 4 has known constraints.
+  #constrained_image_x_y: list of lists. Each list (corresponds to each image) has multiple array specifying the blocks of pixels which belongs to a separate cluster.
+					      #Example : list(list(c(1,1,35,150,230),c(1,110,143,1,50),c(2,90,96,55,70)),list(c(1,1,35,1,40),c(1,1,35,1,40),c(3,24,32,108,118)),list(),list())
+						  #Here Image 1 has three blocks of pixels and Image 2 has three blocks of pixels with constraint information. Image 3 and 4 has no constraint information (empty list).
+						  #Here c(1,1,35,150,230) refers to (g,x_start,x_end,y_start,y_end). The pixels within block (x_start,x_end,y_start,y_end) belong to cluster 1.
+  #Output:
+  #Returns a constraint list
   constraints_list = list()
   for(c in c(1:n_cluster)){
     constraints_list[[c]] = list()
@@ -266,7 +316,7 @@ constrained_pixels <- function(n_cluster = 3, n_images = 4, images_size = list()
   }
   return(constraints_list)
 }
-#Testing 
+#Testing the constrained_pixels function.
 n_cluster = 3
 n_images = 4
 image_size = list(c(143,230),c(152,215),c(136,229),c(138,181))
