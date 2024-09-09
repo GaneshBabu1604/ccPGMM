@@ -30,7 +30,7 @@ correlation_span = 5
 correlation_strength = 0.03
 #Well separated
 #mu_g generator. Generated from a normal distribution.
-mean_list = c(0,5,10,-5)
+mean_list = c(-5,0,5,10)
 sd_list = c(0.5,0.5,0.5,0.5)
 
 for(g in 1:G){
