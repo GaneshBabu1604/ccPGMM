@@ -30,8 +30,8 @@ correlation_span = 5
 correlation_strength = 0.03
 #Mildly overlapping data
 #mu_g generator. Generated from a normal distribution.
-mean_list = c(0,2,5,-2)
-sd_list = c(1.5,1.5,1.5,1.5)
+mean_list = c(-2.5,0,2.5,5)
+sd_list = c(1,1,1,1)
 
 for(g in 1:G){
   mu[g,] <- rnorm(P,mean = mean_list[g],sd = sd_list[g])
