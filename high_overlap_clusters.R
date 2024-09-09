@@ -30,7 +30,7 @@ correlation_span = 5
 correlation_strength = 0.03
 #Heavily overlapping data
 #mu_g generator. Generated from a normal distribution.
-mean_list = c(0,1.5,3,-1.5)
+mean_list = c(-1.25,0,1.25,2.5)
 sd_list = c(1.5,1.5,1.5,1.5)
 
 for(g in 1:G){
