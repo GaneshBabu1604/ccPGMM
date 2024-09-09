@@ -134,11 +134,11 @@ for(d in c(10,20)){
       parallel_list = list(no_models = M,constraint = constrained,parallel_time = end_time)
       n_result = 1
       for(s in result){
-        location = paste('wellseparatedcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_',as.character(n_result),'.RData',sep = '')
+        location = paste('lowoverlapcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_',as.character(n_result),'.RData',sep = '')
         save(s,file = location)
         n_result=n_result+1
       }
-      location = paste('wellseparatedcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_creation_time.RData',sep = '')
+      location = paste('lowoverlapcluster_Data_',as.character(sim_data),'_M',as.character(M),'_d',as.character(d),'_cons',as.character(constrained),'_creation_time.RData',sep = '')
       save(parallel_list,file=location)
     }
     M_index = M_index + 1
@@ -153,7 +153,7 @@ for(d in c(10,20)){
     for(c in c(0,1)){
       for(e in c(0,1)){
         print(c(c,e))
-        loc = paste('wellseparatedcluster_Data_',as.character(sim_data),sep ='')
+        loc = paste('lowoverlapcluster_Data_',as.character(sim_data),sep ='')
         sim_mat_hclust(loc,d,M,c,e,G,N)        
       }
     }    
@@ -164,7 +164,7 @@ for(d in c(10,20)){
 final_results = data.frame()
 for(d in c(10,20)){
   for(M in c(10,25,50,100)){
-    loc = paste('wellseparatedcluster_Data_',as.character(sim_data),sep ='')
+    loc = paste('lowoverlapcluster_Data_',as.character(sim_data),sep ='')
     for(c in c(0,1)){
       for(e in c(0,1)){
         saved_loc = paste(loc,'_M',as.character(M),'_d',as.character(d),'_cons',as.character(c),'_entropy',as.character(e),'_consensus_cluster.RData',sep = '')
